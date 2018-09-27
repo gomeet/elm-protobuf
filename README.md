@@ -1,7 +1,9 @@
+__THIS A FORK OF [gomeet/elm-protobuf](https://travis-ci.org/gomeet/elm-protobuf) FOR A VERY SPECIFIC USAGE USE THE ORIGINAL__
+
 # elm-protobuf
 
-[![Build Status](https://travis-ci.org/tiziano88/elm-protobuf.svg?branch=master)](https://travis-ci.org/tiziano88/elm-protobuf)
-[![Go Report Card](https://goreportcard.com/badge/github.com/tiziano88/elm-protobuf)](https://goreportcard.com/report/github.com/tiziano88/elm-protobuf)
+[![Build Status](https://travis-ci.org/gomeet/elm-protobuf.svg?branch=master)](https://travis-ci.org/gomeet/elm-protobuf)
+[![Go Report Card](https://goreportcard.com/badge/github.com/gomeet/elm-protobuf)](https://goreportcard.com/report/github.com/gomeet/elm-protobuf)
 
 [Join #elm-protobuf on Slack](https://elmlang.slack.com/messages/elm-protobuf/details/)
 
@@ -11,7 +13,7 @@ The plugin itself is written in Go, and it requires the base `protoc` protobuf
 compiler to be installed on the system.
 
 For a sample generated output file, see
-[Repeated.elm](https://github.com/tiziano88/elm-protobuf/blob/master/protoc-gen-elm/go_tests/testdata/repeated/expected_output/Repeated.elm).
+[Repeated.elm](https://github.com/gomeet/elm-protobuf/blob/master/protoc-gen-elm/go_tests/testdata/repeated/expected_output/Repeated.elm).
 
 ## Supported features
 
@@ -45,7 +47,7 @@ For a sample generated output file, see
 ### Release
 
 The simplest way to install the plugin is to download a pre-compiled binary from
-https://github.com/tiziano88/elm-protobuf/releases , then unpack it and copy or
+https://github.com/gomeet/elm-protobuf/releases , then unpack it and copy or
 move the `protoc-gen-elm` binary somewhere in your `$PATH`.
 
 ### From source
@@ -61,7 +63,7 @@ move the `protoc-gen-elm` binary somewhere in your `$PATH`.
 -   Obtain the `protoc-gen-elm` binary using `go get`:
 
     ```
-    go get github.com/tiziano88/elm-protobuf/protoc-gen-elm
+    go get github.com/gomeet/elm-protobuf/protoc-gen-elm
     ```
 
 ## How to run
@@ -75,7 +77,7 @@ and use it to generate the output elm code.
 
 Then, in your project, add a dependency on the runtime library:
 
-`elm install tiziano88/elm-protobuf`
+`elm install gomeet/elm-protobuf`
 
 ## References
 
