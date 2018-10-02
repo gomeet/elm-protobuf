@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -106,6 +107,7 @@ func main() {
 	// options in parameter
 
 	elmPrefix := ""
+	debugMode := false
 	for _, parameter := range strings.Split(req.GetParameter(), ",") {
 		kvp := strings.SplitN(parameter, "=", 2)
 		log.Printf("Parse parameter %s - %+v", parameter, kvp)
@@ -116,6 +118,11 @@ func main() {
 		switch kvp[0] {
 		case "elm_prefix":
 			elmPrefix = kvp[1]
+		case "debug":
+			debugMode, err = strconv.ParseBool(kvp[1])
+			if err != nil {
+				log.Fatalf("[ERROR] - parsing debug option: %v", err)
+			}
 			// other options here
 		}
 	}
@@ -125,7 +132,9 @@ func main() {
 		inFile.SourceCodeInfo = nil
 	}
 
-	//log.Printf("Input data: %v", proto.MarshalTextString(req))
+	if debugMode {
+		log.Printf("Input data: %v", proto.MarshalTextString(req))
+	}
 
 	resp := &plugin.CodeGeneratorResponse{}
 
