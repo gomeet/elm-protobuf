@@ -103,12 +103,29 @@ func main() {
 		log.Fatalf("Could not unmarshal request: %v", err)
 	}
 
+	// options in parameter
+
+	elmPrefix := ""
+	for _, parameter := range strings.Split(req.GetParameter(), ",") {
+		kvp := strings.SplitN(parameter, "=", 2)
+		log.Printf("Parse parameter %s - %+v", parameter, kvp)
+		if len(kvp) != 2 {
+			log.Printf("[WARN] - invalid parameter %+v (skip)", kvp)
+			continue
+		}
+		switch kvp[0] {
+		case "elm_prefix":
+			elmPrefix = kvp[1]
+			// other options here
+		}
+	}
+
 	// Remove useless source code data.
 	for _, inFile := range req.GetProtoFile() {
 		inFile.SourceCodeInfo = nil
 	}
 
-	log.Printf("Input data: %v", proto.MarshalTextString(req))
+	//log.Printf("Input data: %v", proto.MarshalTextString(req))
 
 	resp := &plugin.CodeGeneratorResponse{}
 
@@ -119,7 +136,7 @@ func main() {
 			log.Printf("Skipping well known type")
 			continue
 		}
-		outFile, err := processFile(inFile)
+		outFile, err := processFile(inFile, elmPrefix)
 		if err != nil {
 			log.Fatalf("Could not process file: %v", err)
 		}
@@ -137,7 +154,7 @@ func main() {
 	}
 }
 
-func processFile(inFile *descriptor.FileDescriptorProto) (*plugin.CodeGeneratorResponse_File, error) {
+func processFile(inFile *descriptor.FileDescriptorProto, elmPrefix string) (*plugin.CodeGeneratorResponse_File, error) {
 	if inFile.GetSyntax() != "proto3" {
 		return nil, fmt.Errorf("Only proto3 syntax is supported")
 	}
@@ -147,16 +164,18 @@ func processFile(inFile *descriptor.FileDescriptorProto) (*plugin.CodeGeneratorR
 	inFilePath := inFile.GetName()
 	inFileDir, inFileName := filepath.Split(inFilePath)
 
-	shortModuleName := firstUpper(strings.TrimSuffix(inFileName, ".proto"))
-
+	shortModuleName := camelCase(firstUpper(strings.TrimSuffix(inFileName, ".proto")))
 	fullModuleName := ""
 	outFileName := ""
+	if elmPrefix != "" {
+		fullModuleName = elmPrefix + "."
+	}
 	for _, segment := range strings.Split(inFileDir, "/") {
 		if segment == "" {
 			continue
 		}
-		fullModuleName += firstUpper(segment) + "."
-		outFileName += firstUpper(segment) + "/"
+		fullModuleName += camelCase(segment) + "."
+		outFileName += camelCase(segment) + "/"
 	}
 	fullModuleName += shortModuleName
 	outFileName += shortModuleName + ".elm"
@@ -409,6 +428,7 @@ func firstUpper(in string) string {
 }
 
 func camelCase(in string) string {
+	in = strings.Replace(in, "-", "_", -1)
 	// Remove any additional underscores, e.g. convert `foo_1` into `foo1`.
 	return strings.Replace(generator.CamelCase(in), "_", "", -1)
 }
