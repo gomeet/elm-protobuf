@@ -18,6 +18,13 @@ import (
 	plugin "github.com/golang/protobuf/protoc-gen-go/plugin"
 )
 
+type JsonNameType int
+
+const (
+	JSON_NAME JsonNameType = iota + 1
+	PB_NAME
+)
+
 var (
 	// Maps each type to the file in which it was defined.
 	typeToFile = map[string]string{}
@@ -105,7 +112,7 @@ func main() {
 	}
 
 	// options in parameter
-
+	jsonNameType := JSON_NAME
 	elmPrefix := ""
 	debugMode := false
 	for _, parameter := range strings.Split(req.GetParameter(), ",") {
@@ -118,6 +125,13 @@ func main() {
 		switch kvp[0] {
 		case "elm_prefix":
 			elmPrefix = kvp[1]
+		case "json_name_type":
+			switch strings.ToUpper(kvp[1]) {
+			case "PROTO", "PB", "NAME", "PB_NAME":
+				jsonNameType = PB_NAME
+			default: //"JSON", "JSON_NAME"
+				jsonNameType = JSON_NAME
+			}
 		case "debug":
 			debugMode, err = strconv.ParseBool(kvp[1])
 			if err != nil {
@@ -145,7 +159,7 @@ func main() {
 			log.Printf("Skipping well known type")
 			continue
 		}
-		outFile, err := processFile(inFile, elmPrefix)
+		outFile, err := processFile(inFile, elmPrefix, jsonNameType)
 		if err != nil {
 			log.Fatalf("Could not process file: %v", err)
 		}
@@ -163,7 +177,7 @@ func main() {
 	}
 }
 
-func processFile(inFile *descriptor.FileDescriptorProto, elmPrefix string) (*plugin.CodeGeneratorResponse_File, error) {
+func processFile(inFile *descriptor.FileDescriptorProto, elmPrefix string, jsonNameType JsonNameType) (*plugin.CodeGeneratorResponse_File, error) {
 	if inFile.GetSyntax() != "proto3" {
 		return nil, fmt.Errorf("Only proto3 syntax is supported")
 	}
@@ -242,7 +256,7 @@ func processFile(inFile *descriptor.FileDescriptorProto, elmPrefix string) (*plu
 	for _, inMessage := range inFile.GetMessageType() {
 		typeToFile[strings.TrimPrefix(inFile.GetPackage()+"."+inMessage.GetName(), ".")] = inFile.GetName()
 
-		err = fg.GenerateEverything("", inMessage)
+		err = fg.GenerateEverything("", inMessage, jsonNameType)
 		if err != nil {
 			return nil, err
 		}
@@ -273,7 +287,7 @@ func (fg *FileGenerator) GenerateImports() {
 	fg.P("import Json.Encode as JE")
 }
 
-func (fg *FileGenerator) GenerateEverything(prefix string, inMessage *descriptor.DescriptorProto) error {
+func (fg *FileGenerator) GenerateEverything(prefix string, inMessage *descriptor.DescriptorProto, jsonNameType JsonNameType) error {
 	newPrefix := prefix + inMessage.GetName() + "_"
 	var err error
 
@@ -308,7 +322,7 @@ func (fg *FileGenerator) GenerateEverything(prefix string, inMessage *descriptor
 		}
 	}
 
-	err = fg.GenerateMessageDecoder(prefix, inMessage)
+	err = fg.GenerateMessageDecoder(prefix, inMessage, jsonNameType)
 	if err != nil {
 		return err
 	}
@@ -320,7 +334,7 @@ func (fg *FileGenerator) GenerateEverything(prefix string, inMessage *descriptor
 		}
 	}
 
-	err = fg.GenerateMessageEncoder(prefix, inMessage)
+	err = fg.GenerateMessageEncoder(prefix, inMessage, jsonNameType)
 	if err != nil {
 		return err
 	}
@@ -334,7 +348,7 @@ func (fg *FileGenerator) GenerateEverything(prefix string, inMessage *descriptor
 
 	// Nested messages.
 	for _, nested := range inMessage.GetNestedType() {
-		err = fg.GenerateEverything(newPrefix, nested)
+		err = fg.GenerateEverything(newPrefix, nested, jsonNameType)
 		if err != nil {
 			return err
 		}
@@ -412,8 +426,13 @@ func convert(inType string) (string, string) {
 	return strings.Join(outPackageSegments, "."), strings.Join(outMessageSegments, "_")
 }
 
-func jsonFieldName(field *descriptor.FieldDescriptorProto) string {
-	return field.GetJsonName()
+func jsonFieldName(field *descriptor.FieldDescriptorProto, jsonNameType JsonNameType) string {
+	switch jsonNameType {
+	case PB_NAME:
+		return field.GetName()
+	default:
+		return field.GetJsonName()
+	}
 }
 
 func firstLower(in string) string {

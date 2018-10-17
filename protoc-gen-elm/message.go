@@ -71,7 +71,7 @@ func (fg *FileGenerator) GenerateMessageDefinition(prefix string, inMessage *des
 	return nil
 }
 
-func (fg *FileGenerator) GenerateMessageDecoder(prefix string, inMessage *descriptor.DescriptorProto) error {
+func (fg *FileGenerator) GenerateMessageDecoder(prefix string, inMessage *descriptor.DescriptorProto, jsonNameType JsonNameType) error {
 	typeName := prefix + inMessage.GetName()
 
 	fg.P("")
@@ -97,12 +97,12 @@ func (fg *FileGenerator) GenerateMessageDecoder(prefix string, inMessage *descri
 				def := fieldDefaultValue(inField)
 
 				if repeated {
-					fg.P("|> repeated %q %s", jsonFieldName(inField), d)
+					fg.P("|> repeated %q %s", jsonFieldName(inField, jsonNameType), d)
 				} else {
 					if optional {
-						fg.P("|> optional %q %s", jsonFieldName(inField), d)
+						fg.P("|> optional %q %s", jsonFieldName(inField, jsonNameType), d)
 					} else {
-						fg.P("|> required %q %s %s", jsonFieldName(inField), d, def)
+						fg.P("|> required %q %s %s", jsonFieldName(inField, jsonNameType), d, def)
 					}
 				}
 			}
@@ -119,7 +119,7 @@ func (fg *FileGenerator) GenerateMessageDecoder(prefix string, inMessage *descri
 	return nil
 }
 
-func (fg *FileGenerator) GenerateMessageEncoder(prefix string, inMessage *descriptor.DescriptorProto) error {
+func (fg *FileGenerator) GenerateMessageEncoder(prefix string, inMessage *descriptor.DescriptorProto, jsonNameType JsonNameType) error {
 	typeName := prefix + inMessage.GetName()
 	argName := "v"
 
@@ -152,12 +152,12 @@ func (fg *FileGenerator) GenerateMessageEncoder(prefix string, inMessage *descri
 				val := argName + "." + elmFieldName(inField.GetName())
 				def := fieldDefaultValue(inField)
 				if repeated {
-					fg.P("%s (repeatedFieldEncoder %q %s %s)", leading, jsonFieldName(inField), d, val)
+					fg.P("%s (repeatedFieldEncoder %q %s %s)", leading, jsonFieldName(inField, jsonNameType), d, val)
 				} else {
 					if optional {
-						fg.P("%s (optionalEncoder %q %s %s)", leading, jsonFieldName(inField), d, val)
+						fg.P("%s (optionalEncoder %q %s %s)", leading, jsonFieldName(inField, jsonNameType), d, val)
 					} else {
-						fg.P("%s (requiredFieldEncoder %q %s %s %s)", leading, jsonFieldName(inField), d, def, val)
+						fg.P("%s (requiredFieldEncoder %q %s %s %s)", leading, jsonFieldName(inField, jsonNameType), d, def, val)
 					}
 				}
 
