@@ -219,11 +219,14 @@ func processFile(inFile *descriptor.FileDescriptorProto, elmPrefix string, jsonN
 			continue
 		}
 		fullModuleName := ""
+		if elmPrefix != "" {
+			fullModuleName = elmPrefix + "."
+		}
 		for _, segment := range strings.Split(strings.TrimSuffix(d, ".proto"), "/") {
 			if segment == "" {
 				continue
 			}
-			fullModuleName += firstUpper(segment) + "."
+			fullModuleName += camelCase(segment) + "."
 		}
 		fullModuleName = strings.TrimSuffix(fullModuleName, ".")
 		// TODO: Do not expose everything.
@@ -457,6 +460,7 @@ func firstUpper(in string) string {
 
 func camelCase(in string) string {
 	in = strings.Replace(in, "-", "_", -1)
+	in = strings.Replace(in, ".", "_", -1)
 	// Remove any additional underscores, e.g. convert `foo_1` into `foo1`.
 	return strings.Replace(generator.CamelCase(in), "_", "", -1)
 }
