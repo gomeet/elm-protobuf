@@ -16,6 +16,7 @@ import (
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"github.com/golang/protobuf/protoc-gen-go/generator"
 	plugin "github.com/golang/protobuf/protoc-gen-go/plugin"
+	ggdescriptor "github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway/descriptor"
 )
 
 type JsonNameType int
@@ -26,6 +27,8 @@ const (
 )
 
 var (
+	protoRegistry *ggdescriptor.Registry
+
 	// Maps each type to the file in which it was defined.
 	typeToFile = map[string]string{}
 
@@ -150,6 +153,11 @@ func main() {
 		log.Printf("Input data: %v", proto.MarshalTextString(req))
 	}
 
+	protoRegistry = ggdescriptor.NewRegistry()
+	if err := protoRegistry.Load(req); err != nil {
+		log.Fatalf("Could not load registry: %v", err)
+	}
+
 	resp := &plugin.CodeGeneratorResponse{}
 
 	for _, inFile := range req.GetProtoFile() {
@@ -229,8 +237,12 @@ func processFile(inFile *descriptor.FileDescriptorProto, elmPrefix string, jsonN
 			fullModuleName += camelCase(segment) + "."
 		}
 		fullModuleName = strings.TrimSuffix(fullModuleName, ".")
-		// TODO: Do not expose everything.
-		fg.P("import %s exposing (..)", fullModuleName)
+
+		if descDepFile, err := protoRegistry.LookupFile(d); err == nil {
+			fg.P("import %s as %s", fullModuleName, camelCase(descDepFile.GetPackage()))
+		} else {
+			fg.P("import %s exposing (..)", fullModuleName)
+		}
 	}
 
 	var err error
@@ -259,7 +271,7 @@ func processFile(inFile *descriptor.FileDescriptorProto, elmPrefix string, jsonN
 	for _, inMessage := range inFile.GetMessageType() {
 		typeToFile[strings.TrimPrefix(inFile.GetPackage()+"."+inMessage.GetName(), ".")] = inFile.GetName()
 
-		err = fg.GenerateEverything("", inMessage, jsonNameType)
+		err = fg.GenerateEverything(inFile, "", inMessage, jsonNameType)
 		if err != nil {
 			return nil, err
 		}
@@ -290,7 +302,7 @@ func (fg *FileGenerator) GenerateImports() {
 	fg.P("import Json.Encode as JE")
 }
 
-func (fg *FileGenerator) GenerateEverything(prefix string, inMessage *descriptor.DescriptorProto, jsonNameType JsonNameType) error {
+func (fg *FileGenerator) GenerateEverything(inFile *descriptor.FileDescriptorProto, prefix string, inMessage *descriptor.DescriptorProto, jsonNameType JsonNameType) error {
 	newPrefix := prefix + inMessage.GetName() + "_"
 	var err error
 
@@ -313,7 +325,7 @@ func (fg *FileGenerator) GenerateEverything(prefix string, inMessage *descriptor
 		}
 	}
 
-	err = fg.GenerateMessageDefinition(prefix, inMessage)
+	err = fg.GenerateMessageDefinition(inFile, prefix, inMessage)
 	if err != nil {
 		return err
 	}
@@ -325,7 +337,7 @@ func (fg *FileGenerator) GenerateEverything(prefix string, inMessage *descriptor
 		}
 	}
 
-	err = fg.GenerateMessageDecoder(prefix, inMessage, jsonNameType)
+	err = fg.GenerateMessageDecoder(inFile, prefix, inMessage, jsonNameType)
 	if err != nil {
 		return err
 	}
@@ -337,7 +349,7 @@ func (fg *FileGenerator) GenerateEverything(prefix string, inMessage *descriptor
 		}
 	}
 
-	err = fg.GenerateMessageEncoder(prefix, inMessage, jsonNameType)
+	err = fg.GenerateMessageEncoder(inFile, prefix, inMessage, jsonNameType)
 	if err != nil {
 		return err
 	}
@@ -351,7 +363,7 @@ func (fg *FileGenerator) GenerateEverything(prefix string, inMessage *descriptor
 
 	// Nested messages.
 	for _, nested := range inMessage.GetNestedType() {
-		err = fg.GenerateEverything(newPrefix, nested, jsonNameType)
+		err = fg.GenerateEverything(inFile, newPrefix, nested, jsonNameType)
 		if err != nil {
 			return err
 		}

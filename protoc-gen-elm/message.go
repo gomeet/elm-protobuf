@@ -6,7 +6,7 @@ import (
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 )
 
-func (fg *FileGenerator) GenerateMessageDefinition(prefix string, inMessage *descriptor.DescriptorProto) error {
+func (fg *FileGenerator) GenerateMessageDefinition(inFile *descriptor.FileDescriptorProto, prefix string, inMessage *descriptor.DescriptorProto) error {
 	typeName := prefix + inMessage.GetName()
 
 	fg.P("")
@@ -31,7 +31,7 @@ func (fg *FileGenerator) GenerateMessageDefinition(prefix string, inMessage *des
 				(inField.GetType() == descriptor.FieldDescriptorProto_TYPE_MESSAGE)
 			repeated := inField.GetLabel() == descriptor.FieldDescriptorProto_LABEL_REPEATED
 
-			fType := fieldElmType(inField)
+			fType := fieldElmType(inFile, inField)
 
 			fName := elmFieldName(inField.GetName())
 			fNumber := inField.GetNumber()
@@ -63,15 +63,15 @@ func (fg *FileGenerator) GenerateMessageDefinition(prefix string, inMessage *des
 	}
 
 	for i, _ := range inMessage.GetOneofDecl() {
-		fg.GenerateOneofDefinition(prefix, inMessage, i)
-		fg.GenerateOneofDecoder(prefix, inMessage, i)
-		fg.GenerateOneofEncoder(prefix, inMessage, i)
+		fg.GenerateOneofDefinition(inFile, prefix, inMessage, i)
+		fg.GenerateOneofDecoder(inFile, prefix, inMessage, i)
+		fg.GenerateOneofEncoder(inFile, prefix, inMessage, i)
 	}
 
 	return nil
 }
 
-func (fg *FileGenerator) GenerateMessageDecoder(prefix string, inMessage *descriptor.DescriptorProto, jsonNameType JsonNameType) error {
+func (fg *FileGenerator) GenerateMessageDecoder(inFile *descriptor.FileDescriptorProto, prefix string, inMessage *descriptor.DescriptorProto, jsonNameType JsonNameType) error {
 	typeName := prefix + inMessage.GetName()
 
 	fg.P("")
@@ -93,7 +93,7 @@ func (fg *FileGenerator) GenerateMessageDecoder(prefix string, inMessage *descri
 				optional := (inField.GetLabel() == descriptor.FieldDescriptorProto_LABEL_OPTIONAL) &&
 					(inField.GetType() == descriptor.FieldDescriptorProto_TYPE_MESSAGE)
 				repeated := inField.GetLabel() == descriptor.FieldDescriptorProto_LABEL_REPEATED
-				d := fieldDecoderName(inField)
+				d := fieldDecoderName(inFile, inField)
 				def := fieldDefaultValue(inField)
 
 				if repeated {
@@ -119,7 +119,7 @@ func (fg *FileGenerator) GenerateMessageDecoder(prefix string, inMessage *descri
 	return nil
 }
 
-func (fg *FileGenerator) GenerateMessageEncoder(prefix string, inMessage *descriptor.DescriptorProto, jsonNameType JsonNameType) error {
+func (fg *FileGenerator) GenerateMessageEncoder(inFile *descriptor.FileDescriptorProto, prefix string, inMessage *descriptor.DescriptorProto, jsonNameType JsonNameType) error {
 	typeName := prefix + inMessage.GetName()
 	argName := "v"
 
@@ -148,7 +148,7 @@ func (fg *FileGenerator) GenerateMessageEncoder(prefix string, inMessage *descri
 				optional := (inField.GetLabel() == descriptor.FieldDescriptorProto_LABEL_OPTIONAL) &&
 					(inField.GetType() == descriptor.FieldDescriptorProto_TYPE_MESSAGE)
 				repeated := inField.GetLabel() == descriptor.FieldDescriptorProto_LABEL_REPEATED
-				d := fieldEncoderName(inField)
+				d := fieldEncoderName(inFile, inField)
 				val := argName + "." + elmFieldName(inField.GetName())
 				def := fieldDefaultValue(inField)
 				if repeated {
@@ -180,7 +180,7 @@ func (fg *FileGenerator) GenerateMessageEncoder(prefix string, inMessage *descri
 	return nil
 }
 
-func fieldElmType(inField *descriptor.FieldDescriptorProto) string {
+func fieldElmType(inFile *descriptor.FileDescriptorProto, inField *descriptor.FieldDescriptorProto) string {
 	switch inField.GetType() {
 	case descriptor.FieldDescriptorProto_TYPE_INT32,
 		descriptor.FieldDescriptorProto_TYPE_INT64,
@@ -206,8 +206,15 @@ func fieldElmType(inField *descriptor.FieldDescriptorProto) string {
 		if n, ok := excludedTypes[inField.GetTypeName()]; ok {
 			return n
 		}
-		_, messageName := convert(inField.GetTypeName())
-		return messageName
+
+		pkgName, messageName := convert(inField.GetTypeName())
+		cPkgName := camelCase(pkgName)
+		cPkgFile := camelCase(inFile.GetPackage())
+		if cPkgFile != cPkgName {
+			return fmt.Sprintf("%s.%s", cPkgName, messageName)
+		} else {
+			return messageName
+		}
 	case descriptor.FieldDescriptorProto_TYPE_BYTES:
 		// XXX
 		return "Bytes"
@@ -217,7 +224,7 @@ func fieldElmType(inField *descriptor.FieldDescriptorProto) string {
 	}
 }
 
-func fieldEncoderName(inField *descriptor.FieldDescriptorProto) string {
+func fieldEncoderName(inFile *descriptor.FileDescriptorProto, inField *descriptor.FieldDescriptorProto) string {
 	switch inField.GetType() {
 	case descriptor.FieldDescriptorProto_TYPE_INT32,
 		descriptor.FieldDescriptorProto_TYPE_UINT32,
@@ -241,15 +248,27 @@ func fieldEncoderName(inField *descriptor.FieldDescriptorProto) string {
 	case descriptor.FieldDescriptorProto_TYPE_ENUM:
 		// TODO: Default enum value.
 		// Remove leading ".".
-		_, messageName := convert(inField.GetTypeName())
-		return encoderName(messageName)
+		pkgName, messageName := convert(inField.GetTypeName())
+		cPkgName := camelCase(pkgName)
+		cPkgFile := camelCase(inFile.GetPackage())
+		if cPkgFile != cPkgName {
+			return firstUpper(encoderName(fmt.Sprintf("%s.%s", cPkgName, messageName)))
+		} else {
+			return encoderName(messageName)
+		}
 	case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
 		// Well Known Types.
 		if n, ok := excludedEncoders[inField.GetTypeName()]; ok {
 			return n
 		}
-		_, messageName := convert(inField.GetTypeName())
-		return encoderName(messageName)
+		pkgName, messageName := convert(inField.GetTypeName())
+		cPkgName := camelCase(pkgName)
+		cPkgFile := camelCase(inFile.GetPackage())
+		if cPkgFile != cPkgName {
+			return firstUpper(encoderName(fmt.Sprintf("%s.%s", cPkgName, messageName)))
+		} else {
+			return encoderName(messageName)
+		}
 	case descriptor.FieldDescriptorProto_TYPE_BYTES:
 		return "bytesFieldEncoder"
 	default:
@@ -257,7 +276,7 @@ func fieldEncoderName(inField *descriptor.FieldDescriptorProto) string {
 	}
 }
 
-func fieldDecoderName(inField *descriptor.FieldDescriptorProto) string {
+func fieldDecoderName(inFile *descriptor.FileDescriptorProto, inField *descriptor.FieldDescriptorProto) string {
 	switch inField.GetType() {
 	case descriptor.FieldDescriptorProto_TYPE_INT32,
 		descriptor.FieldDescriptorProto_TYPE_INT64,
@@ -280,15 +299,27 @@ func fieldDecoderName(inField *descriptor.FieldDescriptorProto) string {
 	case descriptor.FieldDescriptorProto_TYPE_ENUM:
 		// TODO: Default enum value.
 		// Remove leading ".".
-		_, messageName := convert(inField.GetTypeName())
-		return decoderName(messageName)
+		pkgName, messageName := convert(inField.GetTypeName())
+		cPkgName := camelCase(pkgName)
+		cPkgFile := camelCase(inFile.GetPackage())
+		if cPkgFile != cPkgName {
+			return firstUpper(decoderName(fmt.Sprintf("%s.%s", cPkgName, messageName)))
+		} else {
+			return decoderName(messageName)
+		}
 	case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
 		// Well Known Types.
 		if n, ok := excludedDecoders[inField.GetTypeName()]; ok {
 			return n
 		}
-		_, messageName := convert(inField.GetTypeName())
-		return decoderName(messageName)
+		pkgName, messageName := convert(inField.GetTypeName())
+		cPkgName := camelCase(pkgName)
+		cPkgFile := camelCase(inFile.GetPackage())
+		if cPkgFile != cPkgName {
+			return firstUpper(decoderName(fmt.Sprintf("%s.%s", cPkgName, messageName)))
+		} else {
+			return decoderName(messageName)
+		}
 	case descriptor.FieldDescriptorProto_TYPE_BYTES:
 		return "bytesFieldDecoder"
 	default:
