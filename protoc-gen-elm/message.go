@@ -252,7 +252,7 @@ func fieldEncoderName(inFile *descriptor.FileDescriptorProto, inField *descripto
 		cPkgName := camelCase(pkgName)
 		cPkgFile := camelCase(inFile.GetPackage())
 		if cPkgFile != cPkgName {
-			return firstUpper(encoderName(fmt.Sprintf("%s.%s", cPkgName, messageName)))
+			return fmt.Sprintf("%s.%s", cPkgName, encoderName(messageName))
 		} else {
 			return encoderName(messageName)
 		}
@@ -265,7 +265,7 @@ func fieldEncoderName(inFile *descriptor.FileDescriptorProto, inField *descripto
 		cPkgName := camelCase(pkgName)
 		cPkgFile := camelCase(inFile.GetPackage())
 		if cPkgFile != cPkgName {
-			return firstUpper(encoderName(fmt.Sprintf("%s.%s", cPkgName, messageName)))
+			return fmt.Sprintf("%s.%s", cPkgName, encoderName(messageName))
 		} else {
 			return encoderName(messageName)
 		}
@@ -303,7 +303,7 @@ func fieldDecoderName(inFile *descriptor.FileDescriptorProto, inField *descripto
 		cPkgName := camelCase(pkgName)
 		cPkgFile := camelCase(inFile.GetPackage())
 		if cPkgFile != cPkgName {
-			return firstUpper(decoderName(fmt.Sprintf("%s.%s", cPkgName, messageName)))
+			return fmt.Sprintf("%s.%s", cPkgName, decoderName(messageName))
 		} else {
 			return decoderName(messageName)
 		}
@@ -316,7 +316,7 @@ func fieldDecoderName(inFile *descriptor.FileDescriptorProto, inField *descripto
 		cPkgName := camelCase(pkgName)
 		cPkgFile := camelCase(inFile.GetPackage())
 		if cPkgFile != cPkgName {
-			return firstUpper(decoderName(fmt.Sprintf("%s.%s", cPkgName, messageName)))
+			return fmt.Sprintf("%s.%s", cPkgName, decoderName(messageName))
 		} else {
 			return decoderName(messageName)
 		}
