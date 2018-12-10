@@ -71,6 +71,72 @@ func (fg *FileGenerator) GenerateMessageDefinition(inFile *descriptor.FileDescri
 	return nil
 }
 
+func (fg *FileGenerator) GenerateDefaultMessage(inFile *descriptor.FileDescriptorProto, prefix string, inMessage *descriptor.DescriptorProto) error {
+	typeName := prefix + inMessage.GetName()
+
+	fg.P("")
+	fg.P("")
+	fg.P("%sDefault : %s ", elmFieldName(typeName), typeName)
+	fg.P("%sDefault =", elmFieldName(typeName))
+	{
+		fg.In()
+
+		leading := "{"
+
+		if len(inMessage.GetField()) == 0 {
+			fg.P(leading)
+		}
+
+		for _, inField := range inMessage.GetField() {
+			if inField.OneofIndex != nil {
+				// Handled in the oneof only.
+				continue
+			}
+
+			optional := (inField.GetLabel() == descriptor.FieldDescriptorProto_LABEL_OPTIONAL) &&
+				(inField.GetType() == descriptor.FieldDescriptorProto_TYPE_MESSAGE)
+			repeated := inField.GetLabel() == descriptor.FieldDescriptorProto_LABEL_REPEATED
+
+			fDefaultValue := fieldDefaultValue(inFile, inField)
+
+			fName := elmFieldName(inField.GetName())
+			fNumber := inField.GetNumber()
+
+			if repeated {
+				//fg.P("%s %s : List %s -- %d", leading, fName, fType, fNumber)
+				fg.P("%s %s = [] -- %d", leading, fName, fNumber)
+			} else {
+				if optional {
+					fg.P("%s %s = Just %s -- %d", leading, fName, fDefaultValue, fNumber)
+				} else {
+					fg.P("%s %s = %s -- %d", leading, fName, fDefaultValue, fNumber)
+				}
+			}
+
+			leading = ","
+		}
+
+		for _, inOneof := range inMessage.GetOneofDecl() {
+			oneofName := elmFieldName(inOneof.GetName())
+			// TODO: Prefix with message name to avoid collisions.
+			fg.P("%s %s = %sDefault", leading, elmFieldName(oneofName), inOneof.GetName())
+
+			leading = ","
+		}
+
+		fg.P("}")
+		fg.Out()
+	}
+
+	for i, _ := range inMessage.GetOneofDecl() {
+		fg.GenerateOneofDefinition(inFile, prefix, inMessage, i)
+		fg.GenerateOneofDecoder(inFile, prefix, inMessage, i)
+		fg.GenerateOneofEncoder(inFile, prefix, inMessage, i)
+	}
+
+	return nil
+}
+
 func (fg *FileGenerator) GenerateMessageDecoder(inFile *descriptor.FileDescriptorProto, prefix string, inMessage *descriptor.DescriptorProto, jsonNameType JsonNameType) error {
 	typeName := prefix + inMessage.GetName()
 
@@ -94,7 +160,7 @@ func (fg *FileGenerator) GenerateMessageDecoder(inFile *descriptor.FileDescripto
 					(inField.GetType() == descriptor.FieldDescriptorProto_TYPE_MESSAGE)
 				repeated := inField.GetLabel() == descriptor.FieldDescriptorProto_LABEL_REPEATED
 				d := fieldDecoderName(inFile, inField)
-				def := fieldDefaultValue(inField)
+				def := fieldDefaultValue(inFile, inField)
 
 				if repeated {
 					fg.P("|> repeated %q %s", jsonFieldName(inField, jsonNameType), d)
@@ -150,7 +216,7 @@ func (fg *FileGenerator) GenerateMessageEncoder(inFile *descriptor.FileDescripto
 				repeated := inField.GetLabel() == descriptor.FieldDescriptorProto_LABEL_REPEATED
 				d := fieldEncoderName(inFile, inField)
 				val := argName + "." + elmFieldName(inField.GetName())
-				def := fieldDefaultValue(inField)
+				def := fieldDefaultValue(inFile, inField)
 				if repeated {
 					fg.P("%s (repeatedFieldEncoder %q %s %s)", leading, jsonFieldName(inField, jsonNameType), d, val)
 				} else {
@@ -327,7 +393,7 @@ func fieldDecoderName(inFile *descriptor.FileDescriptorProto, inField *descripto
 	}
 }
 
-func fieldDefaultValue(inField *descriptor.FieldDescriptorProto) string {
+func fieldDefaultValue(inFile *descriptor.FileDescriptorProto, inField *descriptor.FieldDescriptorProto) string {
 	if inField.GetLabel() == descriptor.FieldDescriptorProto_LABEL_REPEATED {
 		return "[]"
 	}
@@ -352,11 +418,22 @@ func fieldDefaultValue(inField *descriptor.FieldDescriptorProto) string {
 	case descriptor.FieldDescriptorProto_TYPE_STRING:
 		return "\"\""
 	case descriptor.FieldDescriptorProto_TYPE_ENUM:
-		// TODO: Default enum value.
 		_, messageName := convert(inField.GetTypeName())
 		return defaultEnumValue(messageName)
 	case descriptor.FieldDescriptorProto_TYPE_MESSAGE:
-		return "xxx"
+		// Well known types.
+		if n, ok := excludedDefaultValues[inField.GetTypeName()]; ok {
+			return n
+		}
+
+		pkgName, messageName := convert(inField.GetTypeName())
+		cPkgName := camelCase(pkgName)
+		cPkgFile := camelCase(inFile.GetPackage())
+		if cPkgFile != cPkgName {
+			return fmt.Sprintf("%s.%sDefault", cPkgName, elmFieldName(messageName))
+		} else {
+			return fmt.Sprintf("%sDefault", elmFieldName(messageName))
+		}
 	case descriptor.FieldDescriptorProto_TYPE_BYTES:
 		return "[]"
 	default:

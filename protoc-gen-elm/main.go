@@ -55,6 +55,18 @@ var (
 		".google.protobuf.BytesValue":  "Bytes",
 		".google.protobuf.BoolValue":   "Bool",
 	}
+	excludedDefaultValues = map[string]string{
+		".google.protobuf.Timestamp":   "",
+		".google.protobuf.Int32Value":  "0",
+		".google.protobuf.Int64Value":  "0",
+		".google.protobuf.UInt32Value": "0",
+		".google.protobuf.UInt64Value": "0",
+		".google.protobuf.DoubleValue": "0.0",
+		".google.protobuf.FloatValue":  "0.0",
+		".google.protobuf.StringValue": `""`,
+		".google.protobuf.BytesValue":  `""`,
+		".google.protobuf.BoolValue":   "False",
+	}
 	excludedDecoders = map[string]string{
 		".google.protobuf.Timestamp":   "timestampDecoder",
 		".google.protobuf.Int32Value":  "intValueDecoder",
@@ -326,6 +338,11 @@ func (fg *FileGenerator) GenerateEverything(inFile *descriptor.FileDescriptorPro
 	}
 
 	err = fg.GenerateMessageDefinition(inFile, prefix, inMessage)
+	if err != nil {
+		return err
+	}
+
+	err = fg.GenerateDefaultMessage(inFile, prefix, inMessage)
 	if err != nil {
 		return err
 	}
