@@ -20,6 +20,26 @@ func (fg *FileGenerator) GenerateEnumDefinition(prefix string, inEnum *descripto
 	return nil
 }
 
+func (fg *FileGenerator) GenerateEnumAllFunction(prefix string, inEnum *descriptor.EnumDescriptorProto) error {
+	typeName := prefix + inEnum.GetName()
+	fg.P("")
+	fg.P("")
+	fg.P("%sAll : List (%s, String)", firstLower(typeName), typeName)
+	fg.P("%sAll =", firstLower(typeName))
+	{
+		fg.In()
+		leading := "["
+		for _, enumValue := range inEnum.GetValue() {
+			// TODO: Convert names to CamelCase.
+			fg.P("%s (%s, %q) -- %d", leading, prefix+elmEnumValueName(enumValue.GetName()), enumValue.GetName(), enumValue.GetNumber())
+			leading = ","
+		}
+		fg.P("]")
+		fg.Out()
+	}
+	return nil
+}
+
 func (fg *FileGenerator) GenerateEnumDecoder(prefix string, inEnum *descriptor.EnumDescriptorProto) error {
 	typeName := prefix + inEnum.GetName()
 	decoderName := decoderName(typeName)

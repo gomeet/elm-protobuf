@@ -268,6 +268,11 @@ func processFile(inFile *descriptor.FileDescriptorProto, elmPrefix string, jsonN
 			return nil, err
 		}
 
+		err = fg.GenerateEnumAllFunction("", inEnum)
+		if err != nil {
+			return nil, err
+		}
+
 		err = fg.GenerateEnumDecoder("", inEnum)
 		if err != nil {
 			return nil, err
@@ -352,6 +357,12 @@ func (fg *FileGenerator) GenerateEverything(inFile *descriptor.FileDescriptorPro
 		if err != nil {
 			return err
 		}
+
+		err = fg.GenerateEnumAllFunction(newPrefix, inEnum)
+		if err != nil {
+			return err
+		}
+
 	}
 
 	err = fg.GenerateMessageDecoder(inFile, prefix, inMessage, jsonNameType)
