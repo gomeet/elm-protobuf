@@ -1,12 +1,18 @@
 package main
 
-import "github.com/golang/protobuf/protoc-gen-go/descriptor"
+import (
+	"fmt"
+
+	"github.com/golang/protobuf/protoc-gen-go/descriptor"
+)
 
 func (fg *FileGenerator) GenerateOneofDefinition(inFile *descriptor.FileDescriptorProto, prefix string, inMessage *descriptor.DescriptorProto, oneofIndex int) error {
 	inOneof := inMessage.GetOneofDecl()[oneofIndex]
 
 	// TODO: Prefix with message name to avoid collisions.
-	oneofType := oneofType(inOneof)
+	msgName := prefix + inMessage.GetName()
+	oneofName := oneofType(inOneof)
+	oneofType := fmt.Sprintf("%s_%s", msgName, oneofName)
 
 	fg.P("")
 	fg.P("")
@@ -23,7 +29,7 @@ func (fg *FileGenerator) GenerateOneofDefinition(inFile *descriptor.FileDescript
 		for _, inField := range inMessage.GetField() {
 			if inField.OneofIndex != nil && inField.GetOneofIndex() == int32(oneofIndex) {
 
-				oneofVariantName := elmTypeName(inField.GetName())
+				oneofVariantName := elmTypeName(fmt.Sprintf("%s_%s", oneofName, inField.GetName()))
 				oneofArgumentType := fieldElmType(inFile, inField)
 				fg.P("%s %s %s", leading, oneofVariantName, oneofArgumentType)
 
@@ -40,7 +46,9 @@ func (fg *FileGenerator) GenerateOneofDecoder(inFile *descriptor.FileDescriptorP
 	inOneof := inMessage.GetOneofDecl()[oneofIndex]
 
 	// TODO: Prefix with message name to avoid collisions.
-	oneofType := oneofType(inOneof)
+	msgName := prefix + inMessage.GetName()
+	oneofName := oneofType(inOneof)
+	oneofType := fmt.Sprintf("%s_%s", msgName, oneofName)
 	decoderName := oneofDecoderName(inOneof)
 
 	fg.P("")
@@ -56,7 +64,7 @@ func (fg *FileGenerator) GenerateOneofDecoder(inFile *descriptor.FileDescriptorP
 			leading := "["
 			for _, inField := range inMessage.GetField() {
 				if inField.OneofIndex != nil && inField.GetOneofIndex() == int32(oneofIndex) {
-					oneofVariantName := elmTypeName(inField.GetName())
+					oneofVariantName := elmTypeName(fmt.Sprintf("%s_%s", oneofName, inField.GetName()))
 					decoderName := fieldDecoderName(inFile, inField)
 					fg.P("%s JD.map %s (JD.field %q %s)", leading, oneofVariantName, inField.GetJsonName(), decoderName)
 					leading = ","
@@ -76,7 +84,10 @@ func (fg *FileGenerator) GenerateOneofEncoder(inFile *descriptor.FileDescriptorP
 	inOneof := inMessage.GetOneofDecl()[oneofIndex]
 
 	// TODO: Prefix with message name to avoid collisions.
-	oneofType := oneofType(inOneof)
+	msgName := prefix + inMessage.GetName()
+
+	oneofName := oneofType(inOneof)
+	oneofType := fmt.Sprintf("%s_%s", msgName, oneofName)
 	encoderName := oneofEncoderName(inOneof)
 	argName := "v"
 
@@ -102,7 +113,7 @@ func (fg *FileGenerator) GenerateOneofEncoder(inFile *descriptor.FileDescriptorP
 			// https://developers.google.com/protocol-buffers/docs/proto3#oneof
 			for _, inField := range inMessage.GetField() {
 				if inField.OneofIndex != nil && inField.GetOneofIndex() == int32(oneofIndex) {
-					oneofVariantName := elmTypeName(inField.GetName())
+					oneofVariantName := elmTypeName(fmt.Sprintf("%s_%s", oneofName, inField.GetName()))
 					e := fieldEncoderName(inFile, inField)
 					fg.P("%s %s ->", oneofVariantName, valueName)
 					fg.In()

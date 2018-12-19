@@ -10,7 +10,7 @@ func (fg *FileGenerator) GenerateMessageDefinition(inFile *descriptor.FileDescri
 	typeName := prefix + inMessage.GetName()
 
 	fg.P("")
-	fg.P("")
+	fg.P("-- PLOP %s", typeName)
 	fg.P("type alias %s =", typeName)
 	{
 		fg.In()
@@ -53,7 +53,7 @@ func (fg *FileGenerator) GenerateMessageDefinition(inFile *descriptor.FileDescri
 			oneofName := elmFieldName(inOneof.GetName())
 			// TODO: Prefix with message name to avoid collisions.
 			oneofTypeName := elmTypeName(inOneof.GetName())
-			fg.P("%s %s : %s", leading, oneofName, oneofTypeName)
+			fg.P("%s %s : %s_%s", leading, oneofName, typeName, oneofTypeName)
 
 			leading = ","
 		}
@@ -117,21 +117,19 @@ func (fg *FileGenerator) GenerateDefaultMessage(inFile *descriptor.FileDescripto
 		}
 
 		for _, inOneof := range inMessage.GetOneofDecl() {
-			oneofName := elmFieldName(inOneof.GetName())
+			oneofName := oneofType(inOneof)
+			oneofVariantName := oneofUnspecifiedValue(inOneof)
+			fg.P("%s %s = %s", leading, elmFieldName(oneofName), oneofVariantName)
+
+			//oneofName := elmFieldName(inOneof.GetName())
 			// TODO: Prefix with message name to avoid collisions.
-			fg.P("%s %s = %sDefault", leading, elmFieldName(oneofName), inOneof.GetName())
+			//fg.P("%s %s = %sDefault", leading, elmFieldName(oneofName), inOneof.GetName())
 
 			leading = ","
 		}
 
 		fg.P("}")
 		fg.Out()
-	}
-
-	for i, _ := range inMessage.GetOneofDecl() {
-		fg.GenerateOneofDefinition(inFile, prefix, inMessage, i)
-		fg.GenerateOneofDecoder(inFile, prefix, inMessage, i)
-		fg.GenerateOneofEncoder(inFile, prefix, inMessage, i)
 	}
 
 	return nil
