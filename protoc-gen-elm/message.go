@@ -10,7 +10,7 @@ func (fg *FileGenerator) GenerateMessageDefinition(inFile *descriptor.FileDescri
 	typeName := prefix + inMessage.GetName()
 
 	fg.P("")
-	fg.P("-- PLOP %s", typeName)
+	fg.P("")
 	fg.P("type alias %s =", typeName)
 	{
 		fg.In()
@@ -118,7 +118,7 @@ func (fg *FileGenerator) GenerateDefaultMessage(inFile *descriptor.FileDescripto
 
 		for _, inOneof := range inMessage.GetOneofDecl() {
 			oneofName := oneofType(inOneof)
-			oneofVariantName := oneofUnspecifiedValue(inOneof)
+			oneofVariantName := fmt.Sprintf("%s_%s", elmTypeName(typeName), oneofUnspecifiedValue(inOneof))
 			fg.P("%s %s = %s", leading, elmFieldName(oneofName), oneofVariantName)
 
 			//oneofName := elmFieldName(inOneof.GetName())

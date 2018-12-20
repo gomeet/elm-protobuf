@@ -22,14 +22,13 @@ func (fg *FileGenerator) GenerateOneofDefinition(inFile *descriptor.FileDescript
 
 		leading := "="
 		{
-			oneofVariantName := oneofUnspecifiedValue(inOneof)
+			oneofVariantName := fmt.Sprintf("%s_%s", elmTypeName(msgName), oneofUnspecifiedValue(inOneof))
 			fg.P("%s %s", leading, oneofVariantName)
 			leading = "|"
 		}
 		for _, inField := range inMessage.GetField() {
 			if inField.OneofIndex != nil && inField.GetOneofIndex() == int32(oneofIndex) {
-
-				oneofVariantName := elmTypeName(fmt.Sprintf("%s_%s", oneofName, inField.GetName()))
+				oneofVariantName := fmt.Sprintf("%s_%s", elmTypeName(msgName), elmTypeName(inField.GetName()))
 				oneofArgumentType := fieldElmType(inFile, inField)
 				fg.P("%s %s %s", leading, oneofVariantName, oneofArgumentType)
 
@@ -64,13 +63,13 @@ func (fg *FileGenerator) GenerateOneofDecoder(inFile *descriptor.FileDescriptorP
 			leading := "["
 			for _, inField := range inMessage.GetField() {
 				if inField.OneofIndex != nil && inField.GetOneofIndex() == int32(oneofIndex) {
-					oneofVariantName := elmTypeName(fmt.Sprintf("%s_%s", oneofName, inField.GetName()))
+					oneofVariantName := fmt.Sprintf("%s_%s", elmTypeName(msgName), elmTypeName(inField.GetName()))
 					decoderName := fieldDecoderName(inFile, inField)
 					fg.P("%s JD.map %s (JD.field %q %s)", leading, oneofVariantName, inField.GetJsonName(), decoderName)
 					leading = ","
 				}
 			}
-			fg.P("%s JD.succeed %s", leading, oneofUnspecifiedValue(inOneof))
+			fg.P("%s JD.succeed %s", leading, fmt.Sprintf("%s_%s", elmTypeName(msgName), oneofUnspecifiedValue(inOneof)))
 			fg.P("]")
 			fg.Out()
 		}
@@ -103,7 +102,7 @@ func (fg *FileGenerator) GenerateOneofEncoder(inFile *descriptor.FileDescriptorP
 
 			valueName := "x"
 			{
-				oneofVariantName := oneofUnspecifiedValue(inOneof)
+				oneofVariantName := fmt.Sprintf("%s_%s", elmTypeName(msgName), oneofUnspecifiedValue(inOneof))
 				fg.P("%s ->", oneofVariantName)
 				fg.In()
 				fg.P("Nothing")
@@ -113,7 +112,7 @@ func (fg *FileGenerator) GenerateOneofEncoder(inFile *descriptor.FileDescriptorP
 			// https://developers.google.com/protocol-buffers/docs/proto3#oneof
 			for _, inField := range inMessage.GetField() {
 				if inField.OneofIndex != nil && inField.GetOneofIndex() == int32(oneofIndex) {
-					oneofVariantName := elmTypeName(fmt.Sprintf("%s_%s", oneofName, inField.GetName()))
+					oneofVariantName := fmt.Sprintf("%s_%s", elmTypeName(msgName), elmTypeName(inField.GetName()))
 					e := fieldEncoderName(inFile, inField)
 					fg.P("%s %s ->", oneofVariantName, valueName)
 					fg.In()
@@ -144,5 +143,5 @@ func oneofType(inOneof *descriptor.OneofDescriptorProto) string {
 }
 
 func oneofUnspecifiedValue(inOneof *descriptor.OneofDescriptorProto) string {
-	return elmTypeName(inOneof.GetName() + "_unspecified")
+	return fmt.Sprintf("%s_Unspecified", elmTypeName(inOneof.GetName()))
 }
