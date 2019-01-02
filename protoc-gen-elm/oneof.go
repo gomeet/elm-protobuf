@@ -28,7 +28,7 @@ func (fg *FileGenerator) GenerateOneofDefinition(inFile *descriptor.FileDescript
 		}
 		for _, inField := range inMessage.GetField() {
 			if inField.OneofIndex != nil && inField.GetOneofIndex() == int32(oneofIndex) {
-				oneofVariantName := fmt.Sprintf("%s_%s", elmTypeName(msgName), elmTypeName(inField.GetName()))
+				oneofVariantName := fmt.Sprintf("%s_%s_%s", elmTypeName(msgName), elmTypeName(inOneof.GetName()), elmTypeName(inField.GetName()))
 				oneofArgumentType := fieldElmType(inFile, inField)
 				fg.P("%s %s %s", leading, oneofVariantName, oneofArgumentType)
 
@@ -63,7 +63,7 @@ func (fg *FileGenerator) GenerateOneofDecoder(inFile *descriptor.FileDescriptorP
 			leading := "["
 			for _, inField := range inMessage.GetField() {
 				if inField.OneofIndex != nil && inField.GetOneofIndex() == int32(oneofIndex) {
-					oneofVariantName := fmt.Sprintf("%s_%s", elmTypeName(msgName), elmTypeName(inField.GetName()))
+					oneofVariantName := fmt.Sprintf("%s_%s_%s", elmTypeName(msgName), elmTypeName(inOneof.GetName()), elmTypeName(inField.GetName()))
 					decoderName := fieldDecoderName(inFile, inField)
 					fg.P("%s JD.map %s (JD.field %q %s)", leading, oneofVariantName, inField.GetJsonName(), decoderName)
 					leading = ","
@@ -112,7 +112,7 @@ func (fg *FileGenerator) GenerateOneofEncoder(inFile *descriptor.FileDescriptorP
 			// https://developers.google.com/protocol-buffers/docs/proto3#oneof
 			for _, inField := range inMessage.GetField() {
 				if inField.OneofIndex != nil && inField.GetOneofIndex() == int32(oneofIndex) {
-					oneofVariantName := fmt.Sprintf("%s_%s", elmTypeName(msgName), elmTypeName(inField.GetName()))
+					oneofVariantName := fmt.Sprintf("%s_%s_%s", elmTypeName(msgName), elmTypeName(inOneof.GetName()), elmTypeName(inField.GetName()))
 					e := fieldEncoderName(inFile, inField)
 					fg.P("%s %s ->", oneofVariantName, valueName)
 					fg.In()
