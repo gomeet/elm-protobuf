@@ -20,6 +20,61 @@ func (fg *FileGenerator) GenerateEnumDefinition(prefix string, inEnum *descripto
 	return nil
 }
 
+func (fg *FileGenerator) GenerateEnumFromStringFunction(prefix string, inEnum *descriptor.EnumDescriptorProto) error {
+	typeName := prefix + inEnum.GetName()
+	fg.P("")
+	fg.P("")
+	fg.P("%sFromString : String -> %s", firstLower(typeName), typeName)
+	fg.P("%sFromString s =", firstLower(typeName))
+	{
+		fg.In()
+		fg.P("case s of")
+		{
+			fg.In()
+			for _, enumValue := range inEnum.GetValue() {
+				fg.P("%q ->", enumValue.GetName())
+				fg.In()
+				fg.P("%s", prefix+elmEnumValueName(enumValue.GetName()))
+				fg.P("")
+				fg.Out()
+			}
+			// TODO: This should fail instead.
+			fg.P("_ ->")
+			fg.In()
+			fg.P("%s", prefix+elmEnumValueName(inEnum.GetValue()[0].GetName()))
+			fg.Out()
+			fg.Out()
+		}
+		fg.Out()
+	}
+	return nil
+}
+
+func (fg *FileGenerator) GenerateEnumToStringFunction(prefix string, inEnum *descriptor.EnumDescriptorProto) error {
+	typeName := prefix + inEnum.GetName()
+	fg.P("")
+	fg.P("")
+	fg.P("%sToString : %s -> String", firstLower(typeName), typeName)
+	fg.P("%sToString s =", firstLower(typeName))
+	{
+		fg.In()
+		fg.P("case s of")
+		{
+			fg.In()
+			for _, enumValue := range inEnum.GetValue() {
+				fg.P("%s ->", prefix+elmEnumValueName(enumValue.GetName()))
+				fg.In()
+				fg.P("%q", enumValue.GetName())
+				fg.P("")
+				fg.Out()
+			}
+			fg.Out()
+		}
+		fg.Out()
+	}
+	return nil
+}
+
 func (fg *FileGenerator) GenerateEnumAllFunction(prefix string, inEnum *descriptor.EnumDescriptorProto) error {
 	typeName := prefix + inEnum.GetName()
 	fg.P("")
@@ -52,26 +107,7 @@ func (fg *FileGenerator) GenerateEnumDecoder(prefix string, inEnum *descriptor.E
 		fg.P("let")
 		{
 			fg.In()
-			fg.P("lookup s =")
-			fg.In()
-			fg.P("case s of")
-			{
-				fg.In()
-				for _, enumValue := range inEnum.GetValue() {
-					fg.P("%q ->", enumValue.GetName())
-					fg.In()
-					fg.P("%s", prefix+elmEnumValueName(enumValue.GetName()))
-					fg.P("")
-					fg.Out()
-				}
-				// TODO: This should fail instead.
-				fg.P("_ ->")
-				fg.In()
-				fg.P("%s", prefix+elmEnumValueName(inEnum.GetValue()[0].GetName()))
-				fg.Out()
-				fg.Out()
-			}
-			fg.Out()
+			fg.P("lookup s = %sFromString s", firstLower(typeName))
 			fg.Out()
 		}
 		fg.P("in")
@@ -103,21 +139,21 @@ func (fg *FileGenerator) GenerateEnumEncoder(prefix string, inEnum *descriptor.E
 		fg.P("let")
 		{
 			fg.In()
-			fg.P("lookup s =")
-			fg.In()
-			fg.P("case s of")
-			{
-				fg.In()
-				for _, enumValue := range inEnum.GetValue() {
-					fg.P("%s ->", prefix+elmEnumValueName(enumValue.GetName()))
-					fg.In()
-					fg.P("%q", enumValue.GetName())
-					fg.P("")
-					fg.Out()
-				}
-				fg.Out()
-			}
-			fg.Out()
+			fg.P("lookup s = %sToString s", firstLower(typeName))
+			//fg.In()
+			//fg.P("case s of")
+			//{
+			//fg.In()
+			//for _, enumValue := range inEnum.GetValue() {
+			//fg.P("%s ->", prefix+elmEnumValueName(enumValue.GetName()))
+			//fg.In()
+			//fg.P("%q", enumValue.GetName())
+			//fg.P("")
+			//fg.Out()
+			//}
+			//fg.Out()
+			//}
+			//fg.Out()
 			fg.Out()
 		}
 		fg.P("in")
